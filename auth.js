@@ -2,7 +2,7 @@
 // Lius FinTech - Authentication Script
 // ============================================
 
-const API_URL = 'http://localhost:3000/api';
+const API_URL = 'https://your-backend-url.onrender.com/api';
 
 // Global variables for face images
 let loginFaceImage = null;
