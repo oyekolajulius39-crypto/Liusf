@@ -193,8 +193,15 @@ app.post('/api/login', async (req, res) => {
       });
     }
 
-    // Face verification disabled for now (demo mode)
+    //// Verify face (disabled)
 const isFaceValid = true;
+
+if (!isFaceValid) {
+  return res.status(401).json({
+    success: false,
+    message: "Face verification failed"
+  });
+}
 
     res.status(200).json({ 
       success: true, 
