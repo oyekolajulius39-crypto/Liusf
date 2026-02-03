@@ -2,7 +2,7 @@
 // Lius FinTech - Dashboard Script
 // ============================================
 
-const API_URL = 'http://localhost:3000/api';
+const API_URL = "https://lius-fintech-backend.onrender.com/api";
 
 // Current user data
 let currentUser = null;
