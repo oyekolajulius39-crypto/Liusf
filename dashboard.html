@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lius FinTech - Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Main Container -->
+    <div class="container dashboard">
+        <!-- Header -->
+        <div class="dashboard-header">
+            <div class="logo">
+                <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+                    <circle cx="20" cy="20" r="18" fill="#FFD700" stroke="#0066CC" stroke-width="2"/>
+                    <text x="20" y="27" font-size="20" font-weight="bold" fill="#0066CC" text-anchor="middle">L</text>
+                </svg>
+                <h1>Lius Dashboard</h1>
+            </div>
+            <div class="user-info">
+                <span id="welcomeUser">Welcome, User</span>
+                <button class="btn-logout" onclick="logout()">Logout</button>
+            </div>
+        </div>
+
+        <!-- Balance Card -->
+        <div class="balance-card">
+            <div class="balance-header">
+                <h3>Current Balance</h3>
+                <button class="refresh-btn" onclick="refreshBalance()" title="Refresh Balance">
+                    🔄
+                </button>
+            </div>
+            <div class="balance-amount">
+                <span class="currency">$</span>
+                <span id="balanceAmount">0.00</span>
+            </div>
+            <p class="balance-subtitle">Available to spend</p>
+        </div>
+
+        <!-- Transfer Section -->
+        <div class="card">
+            <h2>💸 Send Money</h2>
+            <form id="transferForm" onsubmit="handleTransfer(event)">
+                <div class="form-group">
+                    <label for="recipientUsername">Recipient Username</label>
+                    <input type="text" id="recipientUsername" placeholder="Enter recipient's username" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="transferAmount">Amount ($)</label>
+                    <input type="number" id="transferAmount" placeholder="0.00" step="0.01" min="0.01" required>
+                </div>
+
+                <button type="submit" class="btn-primary" id="transferButton">
+                    Send Money
+                </button>
+            </form>
+            <div id="transferMessage" class="message"></div>
+        </div>
+
+        <!-- Transaction History -->
+        <div class="card">
+            <div class="section-header">
+                <h2>📊 Transaction History</h2>
+                <button class="refresh-btn" onclick="loadTransactions()" title="Refresh Transactions">
+                    🔄
+                </button>
+            </div>
+            
+            <div id="transactionsContainer">
+                <div class="loading-message">Loading transactions...</div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>&copy; 2024 Lius FinTech. All rights reserved.</p>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="spinner"></div>
+        <p>Processing...</p>
+    </div>
+
+    <script src="dashboard.js"></script>
+</body>
+</html>
