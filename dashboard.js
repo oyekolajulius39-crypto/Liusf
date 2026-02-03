@@ -3,8 +3,6 @@
 // ============================================
 
 const API_URL = "https://lius-fintech-backend.onrender.com/api";
-
-// Current user data
 let currentUser = null;
 
 // ============================================
@@ -25,29 +23,8 @@ window.addEventListener('DOMContentLoaded', async () => {
         await refreshBalance();
         await loadTransactions();
 
-        // ===== Password Change Form Listener =====
-        const pwdForm = document.getElementById('changePasswordForm');
-        if (pwdForm) {
-            pwdForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                const oldPassword = document.getElementById('oldPassword').value.trim();
-                const newPassword = document.getElementById('newPassword').value.trim();
-                const messageEl = document.getElementById('passwordMessage');
-
-                if (!oldPassword || !newPassword) {
-                    messageEl.textContent = "Please fill in both fields.";
-                    messageEl.className = "message error show";
-                    return;
-                }
-
-                // Call password change function
-                changePassword(oldPassword, newPassword);
-
-                // Clear form
-                pwdForm.reset();
-            });
-        }
-
+        // ===== Change Password Popup Logic =====
+        initPasswordModal();
     } catch (error) {
         console.error('Initialization error:', error);
         logout();
@@ -60,11 +37,9 @@ window.addEventListener('DOMContentLoaded', async () => {
 
 async function refreshBalance() {
     if (!currentUser) return;
-    
     try {
         const response = await fetch(`${API_URL}/balance/${currentUser.id}`);
         const data = await response.json();
-        
         if (data.success) {
             document.getElementById('balanceAmount').textContent = data.balance.toFixed(2);
             currentUser.balance = data.balance;
@@ -126,7 +101,7 @@ async function handleTransfer(event) {
             await refreshBalance();
             await loadTransactions();
 
-            // ===== NEW: Generate Simple Receipt =====
+            // Generate receipt
             generateReceipt(recipientUsername, amount);
 
             setTimeout(() => hideMessage('transferMessage'), 3000);
@@ -167,7 +142,8 @@ function generateReceipt(recipient, amount) {
 
 // ============================================
 // Transaction History
-// (unchanged)
+// ============================================
+
 async function loadTransactions() {
     if (!currentUser) return;
     const container = document.getElementById('transactionsContainer');
@@ -188,6 +164,7 @@ async function loadTransactions() {
         container.innerHTML = `<div class="no-transactions"><p>Error loading transactions</p></div>`;
     }
 }
+
 function createTransactionHTML(transaction) {
     const isSent = transaction.type === 'sent';
     const otherUser = isSent ? transaction.toUsername : transaction.fromUsername;
@@ -197,6 +174,7 @@ function createTransactionHTML(transaction) {
     const date = formatDate(transaction.date);
     return `<div class="transaction-item"><div class="transaction-info"><div class="transaction-type ${transaction.type}"><span>${icon}</span><span>${typeText} ${otherUser}</span></div><div class="transaction-date">${date}</div></div><div class="transaction-amount ${transaction.type}">${amountPrefix}$${transaction.amount.toFixed(2)}</div></div>`;
 }
+
 function formatDate(dateString) {
     const date = new Date(dateString);
     const now = new Date();
@@ -212,19 +190,49 @@ function formatDate(dateString) {
 }
 
 // ============================================
-// Password Change
+// Password Modal & Change
 // ============================================
+
+function initPasswordModal() {
+    const trigger = document.getElementById('changePasswordTrigger');
+    const modal = document.getElementById('changePasswordModal');
+    const closeBtn = document.getElementById('closePasswordModal');
+    const form = document.getElementById('changePasswordForm');
+
+    if (!trigger || !modal || !closeBtn || !form) return;
+
+    // Open modal
+    trigger.addEventListener('click', () => modal.style.display = 'block');
+
+    // Close modal
+    closeBtn.addEventListener('click', () => modal.style.display = 'none');
+    window.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
+
+    // Submit form
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const oldPassword = document.getElementById('oldPassword').value.trim();
+        const newPassword = document.getElementById('newPassword').value.trim();
+        const messageEl = document.getElementById('passwordMessage');
+
+        if (!oldPassword || !newPassword) {
+            messageEl.textContent = "Please fill in both fields.";
+            messageEl.className = "message error show";
+            return;
+        }
+
+        changePassword(oldPassword, newPassword);
+        form.reset();
+        modal.style.display = 'none';
+    });
+}
 
 function changePassword(oldPassword, newPassword) {
     if (!currentUser) return alert('User not logged in');
-
-    if (oldPassword !== currentUser.password) {
-        return alert('Old password is incorrect');
-    }
+    if (oldPassword !== currentUser.password) return alert('Old password is incorrect');
 
     currentUser.password = newPassword;
     localStorage.setItem('user', JSON.stringify(currentUser));
-
     alert('Password changed successfully!');
 }
 
@@ -248,18 +256,8 @@ function hideMessage(elementId) {
     messageEl.className = 'message';
 }
 
-function showLoading() {
-    document.getElementById('loadingOverlay').classList.add('show');
-}
+function showLoading() { document.getElementById('loadingOverlay').classList.add('show'); }
+function hideLoading() { document.getElementById('loadingOverlay').classList.remove('show'); }
 
-function hideLoading() {
-    document.getElementById('loadingOverlay').classList.remove('show');
-}
-
-// Auto-refresh every 30s
-setInterval(async () => {
-    if (currentUser) {
-        await refreshBalance();
-        await loadTransactions();
-    }
-}, 30000);
+// Auto-refresh
+setInterval(async () => { if (currentUser) { await refreshBalance(); await loadTransactions(); } }, 30000);
