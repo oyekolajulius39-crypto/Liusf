@@ -5,33 +5,107 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lius FinTech - Dashboard</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* ========================= */
+        /* Modals */
+        /* ========================= */
+        .modal {
+            display: none; 
+            position: fixed;
+            z-index: 9999; 
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: #fff;
+            margin: 10% auto;
+            padding: 20px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 400px;
+            position: relative;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        /* ========================= */
+        /* Transaction message styling */
+        /* ========================= */
+        .message {
+            display: none;
+            margin-top: 10px;
+            padding: 8px;
+            border-radius: 5px;
+        }
+        .message.show { display: block; }
+        .message.success { background-color: #d4edda; color: #155724; }
+        .message.error { background-color: #f8d7da; color: #721c24; }
+
+        /* ========================= */
+        /* Transaction History cards */
+        /* ========================= */
+        .transaction-item { margin-bottom: 10px; padding: 10px; border-bottom:1px solid #ddd; display:flex; justify-content:space-between; align-items:center; }
+        .transaction-amount.debit { color: red; font-weight: bold; }
+        .transaction-amount.credit { color: green; font-weight: bold; }
+        .transaction-details { text-align:right; font-size: 14px; }
+
+        /* Loading overlay */
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            z-index: 10000;
+            top:0; left:0; width:100%; height:100%;
+            background-color: rgba(0,0,0,0.5);
+            color:#fff; text-align:center; padding-top:20%;
+            font-size:18px;
+        }
+        .loading-overlay.show { display:block; }
+
+        /* User info top right */
+        .user-info { display:flex; align-items:center; gap:10px; }
+        .user-info span { font-weight:bold; }
+        .user-info button { cursor:pointer; padding:5px 10px; border:none; background:#0066CC; color:#fff; border-radius:4px; }
+        .small-btn { font-size:12px; padding:3px 6px; background:#FFA500; }
+    </style>
 </head>
 <body>
     <!-- Main Container -->
     <div class="container dashboard">
         <!-- Header -->
-        <div class="dashboard-header">
-            <div class="logo">
+        <div class="dashboard-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <div class="logo" style="display:flex; align-items:center; gap:10px;">
                 <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
                     <circle cx="20" cy="20" r="18" fill="#FFD700" stroke="#0066CC" stroke-width="2"/>
                     <text x="20" y="27" font-size="20" font-weight="bold" fill="#0066CC" text-anchor="middle">L</text>
                 </svg>
                 <h1>Lius Dashboard</h1>
             </div>
+
             <div class="user-info">
                 <span id="welcomeUser">Welcome, User</span>
-                <span id="changePasswordTrigger" class="change-password-text">Change Password</span>
+                <button id="changePasswordTrigger" class="small-btn">Change Password</button>
+                <button id="setPinTrigger" class="small-btn">Set/Change PIN</button>
                 <button class="btn-logout" onclick="logout()">Logout</button>
             </div>
         </div>
 
         <!-- Balance Card -->
         <div class="balance-card">
-            <div class="balance-header">
+            <div class="balance-header" style="display:flex; justify-content:space-between; align-items:center;">
                 <h3>Current Balance</h3>
-                <button class="refresh-btn" onclick="refreshBalance()" title="Refresh Balance">
-                    🔄
-                </button>
+                <button class="refresh-btn" onclick="refreshBalance()" title="Refresh Balance">🔄</button>
             </div>
             <div class="balance-amount">
                 <span class="currency">$</span>
@@ -54,25 +128,17 @@
                     <input type="number" id="transferAmount" placeholder="0.00" step="0.01" min="0.01" required>
                 </div>
 
-                <button type="submit" class="btn-primary" id="transferButton">
-                    Send Money
-                </button>
+                <button type="submit" class="btn-primary" id="transferButton">Send Money</button>
             </form>
             <div id="transferMessage" class="message"></div>
-
-            <!-- Receipt Display -->
-            <div id="receipt" class="receipt"></div>
         </div>
 
         <!-- Transaction History -->
         <div class="card">
-            <div class="section-header">
+            <div class="section-header" style="display:flex; justify-content:space-between; align-items:center;">
                 <h2>📊 Transaction History</h2>
-                <button class="refresh-btn" onclick="loadTransactions()" title="Refresh Transactions">
-                    🔄
-                </button>
+                <button class="refresh-btn" onclick="loadTransactions()" title="Refresh Transactions">🔄</button>
             </div>
-            
             <div id="transactionsContainer">
                 <div class="loading-message">Loading transactions...</div>
             </div>
@@ -84,11 +150,9 @@
         </div>
     </div>
 
-    <!-- Loading Overlay -->
-    <div id="loadingOverlay" class="loading-overlay">
-        <div class="spinner"></div>
-        <p>Processing...</p>
-    </div>
+    <!-- ========================== -->
+    <!-- Modals -->
+    <!-- ========================== -->
 
     <!-- Change Password Modal -->
     <div id="changePasswordModal" class="modal">
@@ -98,16 +162,52 @@
             <form id="changePasswordForm">
                 <div class="form-group">
                     <label for="oldPassword">Old Password</label>
-                    <input type="password" id="oldPassword" placeholder="Enter old password" required>
+                    <input type="password" id="oldPassword" required>
                 </div>
                 <div class="form-group">
                     <label for="newPassword">New Password</label>
-                    <input type="password" id="newPassword" placeholder="Enter new password" required>
+                    <input type="password" id="newPassword" required>
                 </div>
                 <button type="submit" class="btn-primary">Change Password</button>
             </form>
-            <div id="passwordMessage" class="message"></div>
         </div>
+    </div>
+
+    <!-- Set/Change PIN Modal -->
+    <div id="setPinModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" id="closeSetPinModal">&times;</span>
+            <h3>Set / Change Transaction PIN</h3>
+            <form id="setPinForm">
+                <div class="form-group">
+                    <label for="newPin">4-Digit PIN</label>
+                    <input type="password" id="newPin" maxlength="4" required>
+                </div>
+                <button type="submit" class="btn-primary">Save PIN</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Transaction PIN Verification Modal -->
+    <div id="pinModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" id="closePinModal">&times;</span>
+            <h3>Enter Transaction PIN</h3>
+            <form id="pinForm">
+                <div class="form-group">
+                    <label for="transactionPin">4-Digit PIN</label>
+                    <input type="password" id="transactionPin" maxlength="4" required>
+                </div>
+                <button type="submit" class="btn-primary">Verify PIN</button>
+            </form>
+            <div id="pinMessage" class="message"></div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="spinner"></div>
+        <p>Processing...</p>
     </div>
 
     <script src="dashboard.js"></script>
