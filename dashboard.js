@@ -1,9 +1,10 @@
 // ============================================
-// Lius FinTech - Dashboard Script (Final Updated)
+// Lius FinTech - Dashboard Script (Updated Final)
 // ============================================
 
 const API_URL = "https://lius-fintech-backend.onrender.com/api";
 let currentUser = null;
+let pendingTransfer = null; // For PIN verification
 
 // ============================================
 // Initialization
@@ -11,20 +12,22 @@ let currentUser = null;
 
 window.addEventListener('DOMContentLoaded', async () => {
     const userStr = localStorage.getItem('user');
-    
     if (!userStr) {
         window.location.href = 'index.html';
         return;
     }
-    
+
     try {
         currentUser = JSON.parse(userStr);
         document.getElementById('welcomeUser').textContent = `Welcome, ${currentUser.username}`;
+
+        // Initialize modals
+        initPasswordModal();
+        initPinModal();
+        initSetPinModal();
+
         await refreshBalance();
         await loadTransactions();
-
-        // ===== Change Password Popup Logic =====
-        initPasswordModal();
     } catch (error) {
         console.error('Initialization error:', error);
         logout();
@@ -53,35 +56,42 @@ async function refreshBalance() {
 }
 
 // ============================================
-// Transfer Functions
+// Transfer Functions with PIN
 // ============================================
 
 async function handleTransfer(event) {
     event.preventDefault();
-    
+
     const recipientUsername = document.getElementById('recipientUsername').value.trim();
     const amount = parseFloat(document.getElementById('transferAmount').value);
-    const messageEl = document.getElementById('transferMessage');
-    const button = document.getElementById('transferButton');
-    
+
     if (!recipientUsername) {
         showMessage('transferMessage', 'Please enter recipient username', 'error');
         return;
     }
-    
     if (isNaN(amount) || amount <= 0) {
         showMessage('transferMessage', 'Please enter a valid amount', 'error');
         return;
     }
-    
     if (amount > currentUser.balance) {
         showMessage('transferMessage', 'Insufficient balance', 'error');
         return;
     }
-    
+
+    // Store pending transfer
+    pendingTransfer = { recipientUsername, amount };
+
+    // Show transaction PIN modal
+    document.getElementById('pinModal').style.display = 'block';
+}
+
+async function executeTransfer(recipientUsername, amount) {
+    const messageEl = document.getElementById('transferMessage');
+    const button = document.getElementById('transferButton');
+
     showLoading();
     button.disabled = true;
-    
+
     try {
         const response = await fetch(`${API_URL}/transfer`, {
             method: 'POST',
@@ -92,18 +102,13 @@ async function handleTransfer(event) {
                 amount: amount
             })
         });
-        
         const data = await response.json();
-        
+
         if (data.success) {
             showMessage('transferMessage', `Successfully sent $${amount.toFixed(2)} to ${recipientUsername}`, 'success');
             document.getElementById('transferForm').reset();
             await refreshBalance();
             await loadTransactions();
-
-            // Generate receipt
-            generateReceipt(recipientUsername, amount);
-
             setTimeout(() => hideMessage('transferMessage'), 3000);
         } else {
             showMessage('transferMessage', data.message, 'error');
@@ -118,30 +123,7 @@ async function handleTransfer(event) {
 }
 
 // ============================================
-// Receipt Functionality
-// ============================================
-
-function generateReceipt(recipient, amount) {
-    const receiptID = "RCPT-" + Math.random().toString(36).substr(2, 8).toUpperCase();
-    const now = new Date();
-    const date = now.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
-    const time = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
-
-    const receiptDiv = document.getElementById('receipt');
-    if (receiptDiv) {
-        receiptDiv.innerHTML = `
-            <h3>Transaction Receipt</h3>
-            <p><strong>Receipt ID:</strong> ${receiptID}</p>
-            <p><strong>Recipient:</strong> ${recipient}</p>
-            <p><strong>Amount Sent:</strong> $${amount.toFixed(2)}</p>
-            <p><strong>Date:</strong> ${date}</p>
-            <p><strong>Time:</strong> ${time}</p>
-        `;
-    }
-}
-
-// ============================================
-// Transaction History
+// Transaction History with full receipt
 // ============================================
 
 async function loadTransactions() {
@@ -152,9 +134,9 @@ async function loadTransactions() {
         const data = await response.json();
         if (data.success) {
             if (data.transactions.length === 0) {
-                container.innerHTML = `<div class="no-transactions"><p>No transactions yet</p><p style="margin-top: 10px;">Start by sending money to someone!</p></div>`;
+                container.innerHTML = `<div class="no-transactions"><p>No transactions yet</p><p style="margin-top:10px;">Start by sending money to someone!</p></div>`;
             } else {
-                container.innerHTML = data.transactions.map(transaction => createTransactionHTML(transaction)).join('');
+                container.innerHTML = data.transactions.map(tx => createTransactionHTML(tx)).join('');
             }
         } else {
             container.innerHTML = `<div class="no-transactions"><p>Error loading transactions</p></div>`;
@@ -168,29 +150,29 @@ async function loadTransactions() {
 function createTransactionHTML(transaction) {
     const isSent = transaction.type === 'sent';
     const otherUser = isSent ? transaction.toUsername : transaction.fromUsername;
-    const icon = isSent ? '📤' : '📥';
-    const typeText = isSent ? 'Sent to' : 'Received from';
+    const amountClass = isSent ? 'debit' : 'credit';
     const amountPrefix = isSent ? '-' : '+';
-    const date = formatDate(transaction.date);
-    return `<div class="transaction-item"><div class="transaction-info"><div class="transaction-type ${transaction.type}"><span>${icon}</span><span>${typeText} ${otherUser}</span></div><div class="transaction-date">${date}</div></div><div class="transaction-amount ${transaction.type}">${amountPrefix}$${transaction.amount.toFixed(2)}</div></div>`;
-}
+    const now = new Date(transaction.date);
+    const dateStr = now.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+    const timeStr = now.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' });
+    const receiptID = transaction.receiptID || ("RCPT-" + Math.random().toString(36).substr(2,8).toUpperCase());
 
-function formatDate(dateString) {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now - date;
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-    if (diffMins < 1) return 'Just now';
-    else if (diffMins < 60) return `${diffMins} minute${diffMins>1?'s':''} ago`;
-    else if (diffHours < 24) return `${diffHours} hour${diffHours>1?'s':''} ago`;
-    else if (diffDays < 7) return `${diffDays} day${diffDays>1?'s':''} ago`;
-    else return date.toLocaleDateString('en-US',{month:'short',day:'numeric',year:date.getFullYear()!==now.getFullYear()?'numeric':undefined});
+    return `
+        <div class="transaction-item" style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #ddd; padding:10px 0;">
+            <div class="transaction-amount ${amountClass}" style="font-weight:bold; font-size:16px; color:${isSent?'red':'green'};">
+                ${amountPrefix}$${transaction.amount.toFixed(2)}
+            </div>
+            <div class="transaction-details" style="text-align:right; font-size:14px;">
+                <div><strong>${isSent?'Sent to':'Received from'}:</strong> ${otherUser}</div>
+                <div><strong>Receipt ID:</strong> ${receiptID}</div>
+                <div><strong>Date:</strong> ${dateStr} ${timeStr}</div>
+            </div>
+        </div>
+    `;
 }
 
 // ============================================
-// Password Modal & Change
+// Modals: Change Password
 // ============================================
 
 function initPasswordModal() {
@@ -201,43 +183,99 @@ function initPasswordModal() {
 
     if (!trigger || !modal || !closeBtn || !form) return;
 
-    // Open modal
     trigger.addEventListener('click', () => modal.style.display = 'block');
-
-    // Close modal
     closeBtn.addEventListener('click', () => modal.style.display = 'none');
     window.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
 
-    // Submit form
     form.addEventListener('submit', (e) => {
         e.preventDefault();
         const oldPassword = document.getElementById('oldPassword').value.trim();
         const newPassword = document.getElementById('newPassword').value.trim();
-        const messageEl = document.getElementById('passwordMessage');
+        if (!oldPassword || !newPassword) return alert("Please fill in both fields");
+        if (oldPassword !== currentUser.password) return alert("Old password is incorrect");
 
-        if (!oldPassword || !newPassword) {
-            messageEl.textContent = "Please fill in both fields.";
-            messageEl.className = "message error show";
-            return;
-        }
-
-        changePassword(oldPassword, newPassword);
+        currentUser.password = newPassword;
+        localStorage.setItem('user', JSON.stringify(currentUser));
+        alert("Password changed successfully!");
         form.reset();
         modal.style.display = 'none';
     });
 }
 
-function changePassword(oldPassword, newPassword) {
-    if (!currentUser) return alert('User not logged in');
-    if (oldPassword !== currentUser.password) return alert('Old password is incorrect');
+// ============================================
+// Modals: Set / Change PIN
+// ============================================
 
-    currentUser.password = newPassword;
-    localStorage.setItem('user', JSON.stringify(currentUser));
-    alert('Password changed successfully!');
+function initSetPinModal() {
+    const trigger = document.getElementById('setPinTrigger');
+    const modal = document.getElementById('setPinModal');
+    const closeBtn = document.getElementById('closeSetPinModal');
+    const form = document.getElementById('setPinForm');
+
+    if (!trigger || !modal || !closeBtn || !form) return;
+
+    trigger.addEventListener('click', () => modal.style.display = 'block');
+    closeBtn.addEventListener('click', () => modal.style.display = 'none');
+    window.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
+
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const pin = document.getElementById('newPin').value.trim();
+        if (pin.length !== 4 || isNaN(pin)) return alert("Enter a valid 4-digit PIN");
+
+        currentUser.pin = pin;
+        localStorage.setItem('user', JSON.stringify(currentUser));
+        alert("PIN set/changed successfully!");
+        form.reset();
+        modal.style.display = 'none';
+    });
 }
 
 // ============================================
-// Authentication & UI Helpers
+// Transaction PIN Modal
+// ============================================
+
+function initPinModal() {
+    const pinModal = document.getElementById('pinModal');
+    const closePinModal = document.getElementById('closePinModal');
+    const pinForm = document.getElementById('pinForm');
+
+    if (!pinModal || !closePinModal || !pinForm) return;
+
+    closePinModal.addEventListener('click', () => pinModal.style.display = 'none');
+    window.addEventListener('click', (e) => { if (e.target === pinModal) pinModal.style.display = 'none'; });
+
+    pinForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const pinInput = document.getElementById('transactionPin').value.trim();
+        const messageEl = document.getElementById('pinMessage');
+
+        if (pinInput.length !== 4) {
+            messageEl.textContent = "Enter a 4-digit PIN";
+            messageEl.className = "message error show";
+            return;
+        }
+
+        if (!currentUser.pin || pinInput !== currentUser.pin) {
+            messageEl.textContent = "Incorrect PIN. Transaction denied.";
+            messageEl.className = "message error show";
+            return;
+        }
+
+        pinModal.style.display = 'none';
+        messageEl.textContent = "";
+
+        if (pendingTransfer) {
+            await executeTransfer(pendingTransfer.recipientUsername, pendingTransfer.amount);
+            pendingTransfer = null;
+        }
+
+        pinForm.reset();
+    });
+}
+
+// ============================================
+// Authentication & Helpers
 // ============================================
 
 function logout() {
@@ -259,5 +297,10 @@ function hideMessage(elementId) {
 function showLoading() { document.getElementById('loadingOverlay').classList.add('show'); }
 function hideLoading() { document.getElementById('loadingOverlay').classList.remove('show'); }
 
-// Auto-refresh
-setInterval(async () => { if (currentUser) { await refreshBalance(); await loadTransactions(); } }, 30000);
+// Auto-refresh balance and transactions
+setInterval(async () => {
+    if (currentUser) {
+        await refreshBalance();
+        await loadTransactions();
+    }
+}, 30000);
