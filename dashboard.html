@@ -20,6 +20,7 @@
             </div>
             <div class="user-info">
                 <span id="welcomeUser">Welcome, User</span>
+                <span id="changePasswordTrigger" class="change-password-text">Change Password</span>
                 <button class="btn-logout" onclick="logout()">Logout</button>
             </div>
         </div>
@@ -63,27 +64,6 @@
             <div id="receipt" class="receipt"></div>
         </div>
 
-        <!-- Change Password Section -->
-        <div class="card">
-            <h2>🔑 Change Password</h2>
-            <form id="changePasswordForm">
-                <div class="form-group">
-                    <label for="oldPassword">Old Password</label>
-                    <input type="password" id="oldPassword" placeholder="Enter old password" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="newPassword">New Password</label>
-                    <input type="password" id="newPassword" placeholder="Enter new password" required>
-                </div>
-
-                <button type="submit" class="btn-primary" id="changePasswordButton">
-                    Change Password
-                </button>
-            </form>
-            <div id="passwordMessage" class="message"></div>
-        </div>
-
         <!-- Transaction History -->
         <div class="card">
             <div class="section-header">
@@ -108,6 +88,26 @@
     <div id="loadingOverlay" class="loading-overlay">
         <div class="spinner"></div>
         <p>Processing...</p>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div id="changePasswordModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" id="closePasswordModal">&times;</span>
+            <h3>Change Password</h3>
+            <form id="changePasswordForm">
+                <div class="form-group">
+                    <label for="oldPassword">Old Password</label>
+                    <input type="password" id="oldPassword" placeholder="Enter old password" required>
+                </div>
+                <div class="form-group">
+                    <label for="newPassword">New Password</label>
+                    <input type="password" id="newPassword" placeholder="Enter new password" required>
+                </div>
+                <button type="submit" class="btn-primary">Change Password</button>
+            </form>
+            <div id="passwordMessage" class="message"></div>
+        </div>
     </div>
 
     <script src="dashboard.js"></script>
