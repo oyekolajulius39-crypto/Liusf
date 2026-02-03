@@ -89,16 +89,7 @@
                         <input type="password" id="registerConfirmPassword" placeholder="Confirm your password" required>
                     </div>
 
-                    <!-- Face Verification -->
-                    <div class="form-group">
-                        <label>Face Verification Setup</label>
-                        <div class="camera-container">
-                            <video id="registerVideo" class="camera-feed" autoplay></video>
-                            <canvas id="registerCanvas" style="display: none;"></canvas>
-                            <div id="registerPreview" class="face-preview"></div>
-                        </div>
-                        <button type="button" class="btn-secondary" onclick="captureRegisterFace()">
-                            📷 Capture Face
+                    
                         </button>
                         <small class="face-status" id="registerFaceStatus">Face not captured</small>
                     </div>
